@@ -22,7 +22,11 @@
 #include "AsyncWebSocket.h"
 
 #include <libb64/cencode.h>
-
+#ifndef ESP8266
+#include "mbedtls/sha1.h"
+#else
+#include <Hash.h>
+#endif
 #ifndef ESP8266
 extern "C" {
 typedef struct {
@@ -1336,10 +1340,12 @@ AsyncWebSocketResponse::AsyncWebSocketResponse(const String& key, AsyncWebSocket
   sha1(key + WS_STR_UUID, hash);
 #else
   (String&)key += WS_STR_UUID;
-  SHA1_CTX ctx;
-  SHA1Init(&ctx);
-  SHA1Update(&ctx, (const unsigned char*)key.c_str(), key.length());
-  SHA1Final(hash, &ctx);
+  mbedtls_sha1_context ctx;
+  mbedtls_sha1_init(&ctx);
+  mbedtls_sha1_starts_ret(&ctx);
+  mbedtls_sha1_update_ret(&ctx, (const unsigned char*)key.c_str(), key.length());
+  mbedtls_sha1_finish_ret(&ctx, hash);
+  mbedtls_sha1_free(&ctx);
 #endif
   base64_encodestate _state;
   base64_init_encodestate(&_state);
