@@ -174,7 +174,10 @@ AsyncEventSourceClient::AsyncEventSourceClient(AsyncWebServerRequest *request, A
 }
 
 AsyncEventSourceClient::~AsyncEventSourceClient(){
-   _messageQueue.free();
+  {
+    AsyncWebLockGuard l(_lock);
+    _messageQueue.free();
+  }
   close();
 }
 
@@ -185,17 +188,22 @@ void AsyncEventSourceClient::_queueMessage(AsyncEventSourceMessage *dataMessage)
     delete dataMessage;
     return;
   }
-  if(_messageQueue.length() >= SSE_MAX_QUEUED_MESSAGES){
-      ets_printf("ERROR: Too many messages queued\n");
-      delete dataMessage;
-  } else {
+
+  AsyncWebLockGuard l(_lock);
+  {
+    if(_messageQueue.length() < SSE_MAX_QUEUED_MESSAGES){
       _messageQueue.add(dataMessage);
+      if(_client->canSend())
+        _runQueue();
+      return;
+    }
   }
-  if(_client->canSend())
-    _runQueue();
+  ets_printf("ERROR: Too many messages queued\n");
+  delete dataMessage;
 }
 
 void AsyncEventSourceClient::_onAck(size_t len, uint32_t time){
+  AsyncWebLockGuard l(_lock);
   while(len && !_messageQueue.isEmpty()){
     len = _messageQueue.front()->ack(len, time);
     if(_messageQueue.front()->finished())
@@ -206,9 +214,8 @@ void AsyncEventSourceClient::_onAck(size_t len, uint32_t time){
 }
 
 void AsyncEventSourceClient::_onPoll(){
-  if(!_messageQueue.isEmpty()){
-    _runQueue();
-  }
+  AsyncWebLockGuard l(_lock);
+  _runQueue();
 }
 
 

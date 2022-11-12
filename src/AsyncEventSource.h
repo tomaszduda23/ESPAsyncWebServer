@@ -76,6 +76,7 @@ class AsyncEventSourceClient {
     AsyncEventSource *_server;
     uint32_t _lastId;
     LinkedList<AsyncEventSourceMessage *> _messageQueue;
+    AsyncWebLock _lock;
     void _queueMessage(AsyncEventSourceMessage *dataMessage);
     void _runQueue();
 
