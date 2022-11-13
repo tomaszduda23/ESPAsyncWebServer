@@ -189,8 +189,8 @@ void AsyncEventSourceClient::_queueMessage(AsyncEventSourceMessage *dataMessage)
     return;
   }
 
-  AsyncWebLockGuard l(_lock);
   {
+    AsyncWebLockGuard l(_lock);
     if(_messageQueue.length() < SSE_MAX_QUEUED_MESSAGES){
       _messageQueue.add(dataMessage);
       if(_client->canSend())
